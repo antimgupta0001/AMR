@@ -1,0 +1,33 @@
+
+cd ${0%/*} || exit 1
+clear
+source clean
+source .color
+#-----------------------------------------------------------------------
+echo -e "   - Copy 0.orig to 0"
+cp -r 0.orig 0
+#------------------------------------------------------------------------------
+echo -e "   - Create background mesh"
+blockMesh
+surfaceFeatureExtract
+#------------------------------------------------------------------------------
+echo -e "   - Meshing with snappyHexMesh"
+mpirun snappyHexMesh -overwrite 
+
+#-----------------------------------------------------------------------
+echo -e "   - Decomposition"
+decomposePar
+#-----------------------------------------------------------------------
+echo -e "   - run"
+mpirun -np 6 pimpleFoam -parallel
+
+#-----------------------------------------------------------------------
+echo -e "   - reconstruction"
+#reconstructParMesh 
+#reconstructPar 
+#-----------------------------------------------------------------------
+echo -e "   - Demonstration"
+touch foam.foam
+paraview foam.foam
+
+#------------------------------------------------------------------------------

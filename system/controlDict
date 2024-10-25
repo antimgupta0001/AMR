@@ -1,0 +1,110 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2112                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     pimpleDyMFoam;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         300;
+
+deltaT          1e-4;
+
+writeControl    adjustableRunTime;
+
+writeInterval   1;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+adjustTimeStep  yes;
+
+maxCo           1;
+
+libs ("libadaptiveFvMesh.so");
+
+functions
+{
+    
+    #include "forceCoeffs"
+	
+	vorticity1
+    {
+        type            vorticity;
+        libs            (fieldFunctionObjects);
+        writeControl    writeTime;
+    }
+	
+    AMR
+    {
+        libs        ("libutilityFunctionObjects.so");
+        type        coded;
+        name        computeVelocityCurlMag;
+        executeControl      timeStep;
+        executeInterval     1;
+        writeControl        writeTime;
+        writeInterval       1;
+
+        codeExecute
+        #{
+            const volVectorField& U  =  mesh().lookupObject<volVectorField>("U");
+
+            static autoPtr<volScalarField> velocityCurlMagPtr;
+            if(!velocityCurlMagPtr.valid()) {
+
+              velocityCurlMagPtr.set
+              (
+                  new volScalarField
+                  (
+                    IOobject
+                    (
+                        "velocityCurlMag",
+                        time_.timeName(),
+                        U.mesh(),
+                        IOobject::NO_READ,
+                        IOobject::AUTO_WRITE
+                    ),
+                    mag(fvc::curl(U))
+                  )
+              );
+            }
+            volScalarField &velocityCurlMag = velocityCurlMagPtr();
+            velocityCurlMag.checkIn();
+            velocityCurlMag = mag(fvc::curl(U));
+			
+			Info << " min velocityCurlMag " << min(velocityCurlMag) << nl;
+            Info << " max velocityCurlMag " << max(velocityCurlMag) << nl;
+        #};
+    }
+	
+}
+
+// ************************************************************************* //
